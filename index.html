@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#8dd3e6">
+  <title>Qal'alar jangi</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { font-family: "Trebuchet MS", system-ui, sans-serif; color: #fff; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; background: #92d8e8; }
+    #game { display: block; width: 100vw; height: 100vh; }
+    .topbar {
+      position: fixed; z-index: 2; top: 16px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 18px; padding: 10px 18px;
+      border: 1px solid #ffffff48; border-radius: 16px; background: #182a38e8;
+      box-shadow: 0 8px 26px #19374c30; white-space: nowrap;
+    }
+    .brand { font-size: 17px; font-weight: 1000; letter-spacing: .6px; }
+    .brand span { color: #ffd164; }
+    .gold { padding: 7px 11px; border-radius: 10px; background: #ffffff12; color: #ffe08b; font-size: 14px; font-weight: 800; }
+    .opponent-gold { display: none; padding: 7px 11px; border-radius: 10px; background: #ffffff12; color: #ffaaaa; font-size: 14px; font-weight: 800; }
+    .loot { display: flex; gap: 6px; }
+    .loot span { padding: 6px 8px; border-radius: 9px; background: #ffffff12; font-size: 12px; font-weight: 800; }
+    .round { color: #d6e4eb; font-size: 12px; }
+    .menu-button {
+      padding: 7px 10px; border: 1px solid #ffffff32; border-radius: 9px;
+      background: #ffffff12; color: white; font: inherit; font-size: 11px; cursor: pointer;
+    }
+    .health-panel {
+      position: fixed; z-index: 2; top: 76px; left: 18px; width: 205px;
+      padding: 11px 13px; border: 1px solid #ffffff40; border-radius: 13px;
+      background: #182a38dc; font-size: 12px;
+    }
+    .health-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .health-row + .bar { margin-bottom: 9px; }
+    .bar { height: 8px; overflow: hidden; border-radius: 99px; background: #ffffff2d; }
+    .fill { height: 100%; border-radius: inherit; transition: width .2s; }
+    #player-health { background: linear-gradient(90deg, #60d578, #a5ed72); }
+    #enemy-health { background: linear-gradient(90deg, #ff9b55, #f14f54); }
+    .help {
+      position: fixed; z-index: 2; top: 76px; right: 18px; max-width: 230px;
+      padding: 11px 13px; border: 1px solid #ffffff40; border-radius: 13px;
+      background: #182a38dc; color: #dce7eb; font-size: 11px; line-height: 1.55;
+    }
+    .help strong { color: white; }
+    .bottom {
+      position: fixed; z-index: 2; bottom: 18px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 9px; max-width: calc(100vw - 20px);
+      padding: 9px; border: 1px solid #ffffff50; border-radius: 17px;
+      background: #182a38ec; box-shadow: 0 8px 26px #19374c30;
+    }
+    .unit {
+      min-width: 115px; min-height: 65px; position: relative; display: flex; align-items: center;
+      gap: 9px; padding: 8px 11px; border: 1px solid #ffffff30; border-radius: 12px;
+      background: #ffffff0d; color: white; cursor: pointer; text-align: left;
+      transition: transform .12s, background .12s, border-color .12s;
+    }
+    .unit:hover:not(:disabled) { transform: translateY(-3px); background: #ffffff1d; border-color: #ffd164; }
+    .unit:disabled { cursor: not-allowed; opacity: .48; }
+    .unit .emoji { font-size: 28px; filter: drop-shadow(1px 2px 1px #0007); }
+    .unit .name { display: block; font-size: 11px; font-weight: 800; }
+    .unit .cost { display: block; margin-top: 4px; color: #ffd164; font-size: 10px; }
+    .key {
+      position: absolute; top: 4px; right: 5px; color: #ffffff70; font-size: 9px;
+    }
+    .duel-controls {
+      position: fixed; z-index: 2; right: 10px; bottom: 14px; left: 10px;
+      display: none; justify-content: space-between; pointer-events: none;
+    }
+    .duel-team {
+      display: flex; flex-direction: column; gap: 6px; padding: 7px;
+      border: 1px solid #ffffff50; border-radius: 14px; background: #182a38ec;
+      box-shadow: 0 8px 26px #19374c30; pointer-events: auto;
+    }
+    .duel-team h2 { margin: 0 3px 1px; color: #dce7eb; font-size: 10px; }
+    .duel-team.opponent h2 { color: #ffaaaa; text-align: right; }
+    .duel-team .unit { min-width: 126px; min-height: 48px; padding: 5px 8px; }
+    .duel-team .unit .emoji { font-size: 21px; }
+    .duel-team .unit .name { font-size: 10px; }
+    .duel-team .unit .cost { font-size: 9px; }
+    #main-menu {
+      position: fixed; inset: 0; z-index: 5; display: grid; place-items: center;
+      padding: 18px; background: #102133ba; backdrop-filter: blur(5px);
+    }
+    #main-menu.hidden { display: none; }
+    .menu-card {
+      width: min(92vw, 520px); padding: clamp(23px, 5vw, 42px);
+      border: 1px solid #ffffff72; border-radius: 24px; background: #152638f2;
+      box-shadow: 0 24px 100px #08152399; text-align: center;
+    }
+    .menu-card h1 { margin: 0; color: #ffd164; font-size: clamp(29px, 7vw, 44px); }
+    .menu-card .subtitle { margin: 8px 0 22px; color: #d5e3e9; }
+    .menu-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .menu-option {
+      min-height: 108px; padding: 14px; border: 1px solid #ffffff35; border-radius: 15px;
+      background: #ffffff0d; color: white; font: inherit; cursor: pointer;
+    }
+    .menu-option:hover { border-color: #ffd164; background: #ffffff18; }
+    .menu-option strong { display: block; margin-bottom: 7px; color: #ffd164; font-size: 16px; }
+    .menu-option span { display: block; color: #d5e3e9; font-size: 11px; line-height: 1.45; }
+    .menu-rules { margin: 18px 0 0; color: #b9cbd4; font-size: 11px; line-height: 1.6; }
+    .online-panel { margin-top: 14px; padding: 14px; border: 1px solid #ffffff35; border-radius: 15px; background: #ffffff0a; }
+    .online-panel[hidden] { display: none; }
+    .online-panel h2 { margin: 0 0 9px; color: #ffd164; font-size: 16px; }
+    .name-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0; color: #d5e3e9; font-size: 11px; }
+    .name-row input {
+      width: min(190px, 58vw); min-height: 38px; padding: 7px 10px; border: 1px solid #ffffff42;
+      border-radius: 9px; background: #0f1d2b; color: white; font: inherit;
+    }
+    .online-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+    .online-actions input {
+      width: 132px; min-height: 40px; padding: 8px; border: 1px solid #ffffff42;
+      border-radius: 9px; background: #0f1d2b; color: white; font: inherit; text-align: center;
+    }
+    .online-action {
+      min-height: 40px; padding: 8px 12px; border: 0; border-radius: 9px;
+      background: #ffd164; color: #342817; font: inherit; font-size: 12px;
+      font-weight: 900; cursor: pointer;
+    }
+    .online-action.secondary { border: 1px solid #ffffff35; background: #ffffff12; color: white; }
+    .online-action:disabled { cursor: wait; opacity: .6; }
+    #room-status { min-height: 19px; margin: 9px 0 0; color: #d5e3e9; font-size: 12px; line-height: 1.5; }
+    #room-code-display { color: #ffe08b; font-size: 24px; font-weight: 1000; letter-spacing: 4px; }
+    .online-status { display: none; color: #ffe08b; font-size: 11px; }
+    .room-chat { display: none; width: 100%; padding: 9px; border: 1px solid #ffffff30; border-radius: 12px; background: #0f1d2b99; text-align: left; }
+    .room-chat.visible { display: block; }
+    .room-chat.floating {
+      position: fixed; right: 10px; bottom: 145px; z-index: 4;
+      width: min(275px, 75vw); max-height: 205px; box-shadow: 0 8px 26px #19374c50;
+    }
+    .room-chat.collapsed { display: none; }
+    .chat-toggle { position: fixed; top: 16px; right: 18px; z-index: 6; }
+    .chat-toggle[hidden] { display: none; }
+    .chat-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: #ffe08b; font-size: 11px; font-weight: 900; }
+    .chat-messages { display: flex; flex-direction: column; gap: 4px; max-height: 104px; overflow-y: auto; padding-right: 3px; }
+    .chat-message { overflow-wrap: anywhere; color: #dce7eb; font-size: 10px; line-height: 1.4; }
+    .chat-message strong { color: #ffe08b; }
+    .chat-form { display: flex; gap: 5px; margin-top: 7px; }
+    .chat-form input {
+      width: 100%; min-width: 0; min-height: 34px; padding: 6px 8px; border: 1px solid #ffffff36;
+      border-radius: 8px; outline: none; background: #091522; color: white; font: inherit; font-size: 11px;
+    }
+    .chat-form button {
+      flex: 0 0 auto; padding: 6px 9px; border: 0; border-radius: 8px;
+      background: #ffd164; color: #342817; font: inherit; font-size: 11px; font-weight: 900; cursor: pointer;
+    }
+    .chat-error { min-height: 13px; margin: 4px 0 0; color: #ffaaaa; font-size: 9px; }
+    #message {
+      position: fixed; z-index: 4; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: min(90vw, 400px); padding: 28px; border: 1px solid #ffffff65; border-radius: 22px;
+      background: #152638f2; box-shadow: 0 20px 80px #08152388; text-align: center;
+    }
+    #message.hidden { display: none; }
+    #message h1 { margin: 0 0 8px; color: #ffd164; font-size: 30px; }
+    #message p { margin: 0 0 19px; color: #d5e3e9; line-height: 1.5; }
+    #restart {
+      padding: 11px 18px; border: 0; border-radius: 11px; background: #ffd164;
+      color: #342817; font: inherit; font-weight: 900; cursor: pointer;
+    }
+    @media (max-width: 650px) {
+      .topbar { top: 8px; right: 7px; left: 7px; width: auto; flex-wrap: wrap; justify-content: center; gap: 5px; padding: 7px; transform: none; }
+      .brand { font-size: 11px; }
+      .gold { padding: 6px 8px; font-size: 12px; }
+      .opponent-gold { padding: 5px; font-size: 10px; }
+      .loot { gap: 3px; }
+      .loot span { padding: 5px; font-size: 10px; }
+      .round { display: none; }
+      .health-panel { top: 80px; left: 7px; width: min(47vw, 155px); padding: 7px; font-size: 9px; }
+      .help { top: 80px; right: 7px; max-width: 44vw; padding: 7px; font-size: 9px; }
+      .bottom { bottom: 9px; gap: 4px; padding: 5px; }
+      .unit { min-width: 68px; min-height: 54px; gap: 3px; padding: 5px; }
+      .unit .emoji { font-size: 19px; }
+      .unit .name { font-size: 9px; }
+      .unit .cost { font-size: 9px; }
+      .menu-button { padding: 6px; font-size: 9px; }
+      .chat-toggle { top: 8px; right: 7px; }
+      .duel-controls { bottom: 8px; right: 5px; left: 5px; }
+      .duel-team { display: grid; grid-template-columns: repeat(2, minmax(62px, 1fr)); gap: 4px; padding: 5px; }
+      .duel-team h2 { grid-column: 1 / -1; }
+      .duel-team .unit { min-width: 0; min-height: 44px; gap: 3px; padding: 4px; }
+      .duel-team .unit .emoji { font-size: 17px; }
+      .duel-team .unit .name { font-size: 8px; }
+      .duel-team .unit .cost { font-size: 8px; }
+      .duel-team .key { display: none; }
+      .duel-team h2 { font-size: 9px; }
+      .menu-options { grid-template-columns: 1fr; }
+      .menu-option { min-height: 78px; }
+      .online-panel { padding: 10px; }
+      .online-actions input { width: 110px; }
+      .room-chat.floating { right: 5px; bottom: 124px; width: min(220px, 62vw); max-height: 165px; }
+      .chat-messages { max-height: 68px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Qal'alar jangi. Askarlar chiqarib dushman qal'asini zabt eting."></canvas>
+  <header class="topbar">
+    <div class="brand">QAL'ALAR <span>JANGI</span></div>
+    <div class="gold">🪙 <span id="gold">100</span></div>
+    <div class="opponent-gold" id="opponent-gold">🪙 <span id="enemy-gold">100</span></div>
+    <div class="loot" aria-label="Mukofotlar"><span>⛓️ <b id="chain">0</b></span><span>💎 <b id="diamonds">0</b></span></div>
+    <div class="round" id="round">Jang boshlandi!</div>
+    <div class="online-status" id="online-status"></div>
+    <button class="menu-button" id="home-button">Bosh menyu</button>
+  </header>
+  <button class="menu-button chat-toggle" id="chat-toggle" type="button" hidden>💬 Chat</button>
+  <section class="health-panel" aria-label="Qal'alar salomatligi">
+    <div class="health-row"><span id="player-castle-label">🛡️ Sening qal'ang</span><b id="player-hp-text">1000</b></div>
+    <div class="bar"><div id="player-health" class="fill" style="width:100%"></div></div>
+    <div class="health-row"><span id="enemy-castle-label">🏰 Dushman qal'asi</span><b id="enemy-hp-text">1000</b></div>
+    <div class="bar"><div id="enemy-health" class="fill" style="width:100%"></div></div>
+  </section>
+  <aside class="help" id="help"><strong>Vazifa:</strong> askar chiqarib dushman qal'asini yeng!<br><strong>Mukofot:</strong> g'alabada +10 tanga, +10 zanjir va +10 olmos. Klaviaturada 1, 2, 3 ni bosib ham askar chiqarish mumkin.</aside>
+  <nav class="bottom" id="solo-controls" aria-label="Askarlar">
+    <button class="unit" data-unit="swordsman" data-side="player"><span class="key">1</span><span class="emoji">⚔️</span><span><span class="name">Qilichboz</span><span class="cost">🪙 25</span></span></button>
+    <button class="unit" data-unit="archer" data-side="player"><span class="key">2</span><span class="emoji">🏹</span><span><span class="name">Kamonchi</span><span class="cost">🪙 40</span></span></button>
+    <button class="unit" data-unit="knight" data-side="player"><span class="key">3</span><span class="emoji">🛡️</span><span><span class="name">Ritsar</span><span class="cost">🪙 65</span></span></button>
+    <button class="unit" data-unit="tower" data-side="player"><span class="key">4</span><span class="emoji">🏰</span><span><span class="name">Minora</span><span class="cost">🪙 50</span></span></button>
+  </nav>
+  <section class="duel-controls" id="duel-controls" aria-label="Ikki o‘yinchi askar boshqaruvi">
+    <nav class="duel-team" aria-label="1-o‘yinchi">
+      <h2>1-O‘YINCHI · 1 2 3</h2>
+      <button class="unit" data-unit="swordsman" data-side="player"><span class="key">1</span><span class="emoji">⚔️</span><span><span class="name">Qilichboz</span><span class="cost">🪙 25</span></span></button>
+      <button class="unit" data-unit="archer" data-side="player"><span class="key">2</span><span class="emoji">🏹</span><span><span class="name">Kamonchi</span><span class="cost">🪙 40</span></span></button>
+      <button class="unit" data-unit="knight" data-side="player"><span class="key">3</span><span class="emoji">🛡️</span><span><span class="name">Ritsar</span><span class="cost">🪙 65</span></span></button>
+      <button class="unit" data-unit="tower" data-side="player"><span class="key">4</span><span class="emoji">🏰</span><span><span class="name">Minora</span><span class="cost">🪙 50</span></span></button>
+    </nav>
+    <nav class="duel-team opponent" aria-label="2-o‘yinchi">
+      <h2>2-O‘YINCHI · 7 8 9</h2>
+      <button class="unit" data-unit="swordsman" data-side="enemy"><span class="key">7</span><span class="emoji">⚔️</span><span><span class="name">Qilichboz</span><span class="cost">🪙 25</span></span></button>
+      <button class="unit" data-unit="archer" data-side="enemy"><span class="key">8</span><span class="emoji">🏹</span><span><span class="name">Kamonchi</span><span class="cost">🪙 40</span></span></button>
+      <button class="unit" data-unit="knight" data-side="enemy"><span class="key">9</span><span class="emoji">🛡️</span><span><span class="name">Ritsar</span><span class="cost">🪙 65</span></span></button>
+      <button class="unit" data-unit="tower" data-side="enemy"><span class="key">0</span><span class="emoji">🏰</span><span><span class="name">Minora</span><span class="cost">🪙 50</span></span></button>
+    </nav>
+  </section>
+  <section id="main-menu">
+    <div class="menu-card">
+      <h1>QAL’ALAR JANGI</h1>
+      <p class="subtitle">Qal’angni himoya qil, raqib qal’asini zabt et!</p>
+      <div class="menu-options">
+        <button class="menu-option" data-mode="solo"><strong>🤖 Yakka o‘yin</strong><span>Kompyuterga qarshi jang. Askarlarni 1, 2, 3 bilan chiqar.</span></button>
+        <button class="menu-option" data-mode="local"><strong>⚔️ 2 o‘yinchi</strong><span>Bitta qurilmada: 1-o‘yinchi 1–3, 2-o‘yinchi 7–9 tugmalari.</span></button>
+        <button class="menu-option" id="show-online"><strong>🌐 Onlayn jang</strong><span>Ikki alohida qurilma va xona kodi orqali.</span></button>
+      </div>
+      <div class="online-panel" id="online-panel" hidden>
+        <h2>Internet orqali o‘ynash</h2>
+        <label class="name-row" for="player-name">Ismingiz
+          <input id="player-name" maxlength="20" autocomplete="nickname" placeholder="Masalan, Ali" aria-label="O‘yinchi ismi">
+        </label>
+        <div class="online-actions">
+          <input id="create-code" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="Yangi xona kodi" aria-label="Yaratiladigan xona kodi">
+          <button class="online-action" id="create-room">Shu kodli xona yaratish</button>
+          <input id="join-code" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="Qo‘shilish kodi" aria-label="Xona kodi">
+          <button class="online-action secondary" id="join-room">Qo‘shilish</button>
+        </div>
+        <p id="room-status" role="status"></p>
+        <div id="room-code-display" hidden></div>
+        <button class="online-action secondary" id="copy-room" hidden>Kodni nusxalash</button>
+        <section class="room-chat" id="room-chat" aria-label="Xona chati">
+          <div class="chat-heading"><span>💬 Xona chati</span><span id="chat-count">0/100</span></div>
+          <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
+          <form class="chat-form" id="chat-form">
+            <input id="chat-input" maxlength="200" autocomplete="off" placeholder="Xabar yozing…" aria-label="Chat xabari">
+            <button type="submit">Yuborish</button>
+          </form>
+          <p class="chat-error" id="chat-error" role="status"></p>
+        </section>
+      </div>
+      <p class="menu-rules">Askarlar va qal’a minoralari tanga turadi. Minoralar dushman askarlarga avtomatik o‘q uzadi. Tangalar o‘z-o‘zidan ko‘paymaydi. G‘alaba mukofoti: 10 tanga, 10 zanjir va 10 olmos.</p>
+    </div>
+  </section>
+  <section id="message" class="hidden">
+    <h1 id="result-title">G'alaba!</h1>
+    <p id="result-text"></p>
+    <button id="restart">Qayta o'ynash</button>
+  </section>
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const goldLabel = document.getElementById("gold");
+      const enemyGoldLabel = document.getElementById("enemy-gold");
+      const opponentGoldBox = document.getElementById("opponent-gold");
+      const mainMenu = document.getElementById("main-menu");
+      const onlinePanel = document.getElementById("online-panel");
+      const roomStatus = document.getElementById("room-status");
+      const roomCodeDisplay = document.getElementById("room-code-display");
+      const copyRoomButton = document.getElementById("copy-room");
+      const roomChat = document.getElementById("room-chat");
+      const chatToggle = document.getElementById("chat-toggle");
+      const chatMessages = document.getElementById("chat-messages");
+      const chatCount = document.getElementById("chat-count");
+      const chatError = document.getElementById("chat-error");
+      const onlineStatus = document.getElementById("online-status");
+      const chainLabel = document.getElementById("chain");
+      const diamondsLabel = document.getElementById("diamonds");
+      const roundLabel = document.getElementById("round");
+      const message = document.getElementById("message");
+      const playerHpText = document.getElementById("player-hp-text");
+      const enemyHpText = document.getElementById("enemy-hp-text");
+      const playerCastleLabel = document.getElementById("player-castle-label");
+      const enemyCastleLabel = document.getElementById("enemy-castle-label");
+      const playerHealth = document.getElementById("player-health");
+      const enemyHealth = document.getElementById("enemy-health");
+      const unitButtons = [...document.querySelectorAll(".unit")];
+      const soloControls = document.getElementById("solo-controls");
+      const duelControls = document.getElementById("duel-controls");
+      const settings = {
+        swordsman: { cost: 25, hp: 100, damage: 20, range: 28, speed: 33, interval: .8, color: "#3877c7", size: 15 },
+        archer: { cost: 40, hp: 65, damage: 17, range: 165, speed: 25, interval: 1.15, color: "#36a968", size: 14 },
+        knight: { cost: 65, hp: 190, damage: 38, range: 34, speed: 21, interval: 1.05, color: "#d69337", size: 19 }
+      };
+      const tower = { cost: 50, damage: 22, range: 220, interval: 1.4, limit: 3 };
+      const state = {
+        gold: 100, enemyGold: 100, chain: 0, diamonds: 0, playerHp: 1000, enemyHp: 1000, units: [], particles: [],
+        towers: [0, 0], towerCooldowns: [[], []],
+        elapsed: 0, spawnTimer: 4, last: 0, running: false, mode: null, wave: 1, frame: 0
+      };
+      let onlineRoom = null;
+      let onlineRequestPending = false;
+      let onlinePollTimer = 0;
+      let polling = false;
+      let lastOnlineSnapshot = null;
+      let lastChatId = 0;
+      let renderedChatMessages = 0;
+      let unreadChatCount = 0;
+      let chatOpen = false;
+
+      function getPlayerName() {
+        const input = document.getElementById("player-name");
+        const name = input.value.trim();
+        if (name.length > 20) throw new Error("Ism 20 ta belgidan oshmasin.");
+        return name;
+      }
+      let width = 0, height = 0, dpr = 1;
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const floorY = () => height * .77;
+      const castleX = side => side === "player" ? width * .09 : width * .91;
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.floor(width * dpr);
+        canvas.height = Math.floor(height * dpr);
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
+        if (state.mode === "online" && lastOnlineSnapshot) {
+          state.units = lastOnlineSnapshot.game.units.map(unit => ({
+            ...unit,
+            x: unit.x * width / 1000,
+            stats: settings[unit.type]
+          }));
+        }
+        draw();
+      }
+      function drawCloud(x, y, scale) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = "#ffffff91";
+        ctx.beginPath();
+        ctx.arc(0, 9, 19, 0, Math.PI * 2);
+        ctx.arc(23, 0, 25, 0, Math.PI * 2);
+        ctx.arc(49, 10, 18, 0, Math.PI * 2);
+        ctx.rect(0, 9, 49, 20);
+        ctx.fill();
+        ctx.restore();
+      }
+      function drawCastle(x, side) {
+        const y = floorY();
+        const playerSide = side === "player";
+        const front = playerSide ? "#d7bc83" : "#aa8e91";
+        const sideColor = playerSide ? "#9e8358" : "#765d69";
+        const topColor = playerSide ? "#ead29b" : "#c19fa1";
+        const flag = playerSide ? "#3f89db" : "#df5960";
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(playerSide ? 1 : -1, 1);
+        ctx.fillStyle = "#00000020";
+        ctx.beginPath(); ctx.ellipse(4, 8, 83, 16, 0, 0, Math.PI * 2); ctx.fill();
+        const face = points => {
+          ctx.beginPath();
+          ctx.moveTo(points[0][0], points[0][1]);
+          for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+          ctx.closePath();
+          ctx.fill();
+        };
+        // Rearward faces and roof planes give the stonework a block-like 3D depth.
+        ctx.fillStyle = sideColor;
+        face([[48, -101], [67, -114], [67, -16], [48, -7]]);
+        ctx.fillStyle = topColor;
+        face([[-53, -101], [48, -101], [67, -114], [-34, -114]]);
+        ctx.fillStyle = front;
+        face([[-53, -101], [48, -101], [48, -7], [-53, -7]]);
+        ctx.fillStyle = sideColor;
+        face([[48, -7], [67, -16], [67, -2], [48, 7]]);
+        ctx.fillStyle = "#614944";
+        ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(-5, -45); ctx.quadraticCurveTo(15, -72, 36, -45); ctx.lineTo(36, 0); ctx.closePath(); ctx.fill();
+        const tower = (left, bottom, top) => {
+          const right = left + 34;
+          ctx.fillStyle = sideColor;
+          face([[right, top], [right + 13, top - 9], [right + 13, bottom - 8], [right, bottom]]);
+          ctx.fillStyle = topColor;
+          face([[left, top], [right, top], [right + 13, top - 9], [left + 13, top - 9]]);
+          ctx.fillStyle = front;
+          ctx.fillRect(left, top, 34, bottom - top);
+          ctx.fillStyle = "#514b4a";
+          ctx.fillRect(left + 11, top + 23, 8, 16);
+          ctx.fillStyle = topColor;
+          for (let i = 0; i < 3; i++) {
+            const bx = left - 4 + i * 17;
+            ctx.fillRect(bx, top - 10, 10, 13);
+            ctx.fillStyle = i === 1 ? front : topColor;
+          }
+        };
+        tower(-64, -5, -122);
+        tower(30, -5, -122);
+        ctx.fillStyle = sideColor;
+        face([[31, -112], [47, -122], [47, -8], [31, -1]]);
+        ctx.fillStyle = topColor;
+        face([[-7, -112], [31, -112], [47, -122], [9, -122]]);
+        ctx.fillStyle = front;
+        ctx.fillRect(-7, -112, 38, 111);
+        ctx.fillStyle = "#514b4a";
+        ctx.fillRect(6, -81, 8, 18);
+        ctx.fillRect(-43, -62, 8, 16);
+        ctx.fillRect(42, -62, 8, 16);
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 3; col++) {
+            const wx = -39 + col * 38 + (row % 2) * 5;
+            ctx.fillStyle = "#ffffff2e";
+            ctx.fillRect(wx, -93 + row * 25, 18, 2);
+          }
+        }
+        ctx.strokeStyle = "#594b45"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(2, -116); ctx.lineTo(2, -170); ctx.stroke();
+        ctx.fillStyle = flag;
+        ctx.beginPath();
+        ctx.moveTo(3, -169); ctx.lineTo(35, -158); ctx.lineTo(3, -147);
+        ctx.closePath(); ctx.fill();
+        const towerCount = state.towers[playerSide ? 0 : 1] || 0;
+        for (let i = 0; i < towerCount; i++) {
+          const tx = [-39, 0, 39][i];
+          ctx.fillStyle = playerSide ? "#315c7c" : "#803e4a";
+          ctx.fillRect(tx - 5, -133, 10, 12);
+          ctx.fillStyle = "#f0c39a";
+          ctx.beginPath(); ctx.arc(tx, -136, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "#3a302b"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(tx + 3, -133); ctx.lineTo(tx + 13, -139); ctx.stroke();
+        }
+        ctx.restore();
+      }
+      function drawUnit(unit) {
+        const bob = Math.sin(state.elapsed * 9 + unit.id) * 2;
+        const y = floorY() - 5 + bob;
+        ctx.save();
+        ctx.translate(unit.x, y);
+        if (unit.side === "enemy") ctx.scale(-1, 1);
+        ctx.fillStyle = "#00000025";
+        ctx.beginPath(); ctx.ellipse(0, 3, unit.stats.size * .8, 4, 0, 0, Math.PI * 2); ctx.fill();
+        if (unit.type === "knight") {
+          ctx.fillStyle = "#dde5eb"; ctx.beginPath(); ctx.arc(0, -unit.stats.size - 3, 9, Math.PI, 0); ctx.fill();
+          ctx.fillStyle = "#8297a7"; ctx.fillRect(-10, -unit.stats.size - 4, 20, 5);
+        } else {
+          ctx.fillStyle = "#efc19b"; ctx.beginPath(); ctx.arc(0, -unit.stats.size - 5, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = unit.type === "archer" ? "#7b5536" : "#5b3b2b";
+          ctx.fillRect(-8, -unit.stats.size - 12, 16, 5);
+        }
+        ctx.fillStyle = unit.side === "enemy" ? "#d4525d" : unit.stats.color;
+        ctx.fillRect(-unit.stats.size * .55, -unit.stats.size - 1, unit.stats.size * 1.1, unit.stats.size + 7);
+        ctx.fillStyle = "#493d38"; ctx.fillRect(-unit.stats.size * .48, 4, 5, 8); ctx.fillRect(2, 4, 5, 8);
+        if (unit.type === "archer") {
+          ctx.strokeStyle = "#815932"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(10, -unit.stats.size + 1, 8, -1.3, 1.3); ctx.stroke();
+        } else {
+          ctx.strokeStyle = "#d9d9d1"; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(8, -unit.stats.size + 6); ctx.lineTo(15, -unit.stats.size - 5); ctx.stroke();
+        }
+        const barW = unit.stats.size * 1.7;
+        ctx.fillStyle = "#2e3335"; ctx.fillRect(-barW / 2, -unit.stats.size - 20, barW, 3);
+        ctx.fillStyle = "#62d779"; ctx.fillRect(-barW / 2, -unit.stats.size - 20, barW * clamp(unit.hp / unit.stats.hp, 0, 1), 3);
+        ctx.restore();
+      }
+      function draw() {
+        if (!ctx || width === 0) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const sky = ctx.createLinearGradient(0, 0, 0, height);
+        sky.addColorStop(0, "#75c9e9"); sky.addColorStop(.66, "#d8e9d2"); sky.addColorStop(1, "#87bd67");
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#fff0b1"; ctx.beginPath(); ctx.arc(width * .77, height * .22, Math.min(38, width * .09), 0, Math.PI * 2); ctx.fill();
+        drawCloud(width * .24, height * .2, .78);
+        drawCloud(width * .51, height * .13, .58);
+        const ground = floorY();
+        ctx.fillStyle = "#86c36e"; ctx.fillRect(0, ground - 11, width, height - ground + 11);
+        ctx.fillStyle = "#a9784c"; ctx.fillRect(0, ground, width, height - ground);
+        ctx.fillStyle = "#93623d";
+        for (let i = 0; i < width / 35; i++) {
+          const x = (i * 83 + 29) % width;
+          ctx.fillRect(x, ground + 20 + (i % 3) * 11, 8 + (i % 3) * 2, 3);
+        }
+        drawCastle(castleX("player"), "player");
+        drawCastle(castleX("enemy"), "enemy");
+        const ordered = [...state.units].sort((a, b) => a.side === "player" ? a.x - b.x : b.x - a.x);
+        for (const unit of ordered) drawUnit(unit);
+        for (const particle of state.particles) {
+          ctx.globalAlpha = clamp(particle.life / .55, 0, 1);
+          ctx.fillStyle = particle.color;
+          ctx.font = "bold 14px system-ui";
+          ctx.fillText(particle.text, particle.x, particle.y);
+        }
+        ctx.globalAlpha = 1;
+      }
+      function makeUnit(type, side) {
+        const stats = settings[type];
+        const spawnX = side === "player" ? castleX("player") + 70 : castleX("enemy") - 70;
+        state.units.push({
+          type, side, x: spawnX, hp: stats.hp, stats, cooldown: Math.random() * .4,
+          id: Math.random() * 10000
+        });
+      }
+      function hire(type, side) {
+        if (!state.running || (side === "enemy" && state.mode !== "local" && state.mode !== "online")) return;
+        if (type === "tower") {
+          buildTower(side);
+          return;
+        }
+        const config = settings[type];
+        if (state.mode === "online") {
+          sendOnlineAction(type);
+          return;
+        }
+        const wallet = side === "player" ? "gold" : "enemyGold";
+        if (state[wallet] < config.cost) {
+          roundLabel.textContent = `${side === "player" ? "1-o‘yinchi" : "2-o‘yinchi"}: tanga yetarli emas!`;
+          return;
+        }
+        state[wallet] -= config.cost;
+        makeUnit(type, side);
+        updateUI();
+      }
+      function buildTower(side) {
+        if (state.mode === "online") {
+          sendOnlineAction("tower");
+          return;
+        }
+        const index = side === "player" ? 0 : 1;
+        const wallet = index === 0 ? "gold" : "enemyGold";
+        if (state.towers[index] >= tower.limit) {
+          roundLabel.textContent = "Qal’ada 3 ta himoya minorasi bor.";
+          return;
+        }
+        if (state[wallet] < tower.cost) {
+          roundLabel.textContent = "Minora qurish uchun tanga yetarli emas.";
+          return;
+        }
+        state[wallet] -= tower.cost;
+        state.towers[index]++;
+        state.towerCooldowns[index].push(0);
+        updateUI();
+      }
+      function updateUI() {
+        const ownGold = state.mode === "online" && onlineRoom?.player === 2 ? state.enemyGold : state.gold;
+        const otherGold = state.mode === "online" && onlineRoom?.player === 2 ? state.gold : state.enemyGold;
+        goldLabel.textContent = Math.floor(ownGold);
+        enemyGoldLabel.textContent = Math.floor(otherGold);
+        opponentGoldBox.style.display = state.mode === "local" || state.mode === "online" ? "block" : "none";
+        playerCastleLabel.textContent = state.mode === "local" || state.mode === "online" ? "🛡️ 1-o‘yinchi qal’asi" : "🛡️ Sening qal’ang";
+        enemyCastleLabel.textContent = state.mode === "local" || state.mode === "online" ? "🏰 2-o‘yinchi qal’asi" : "🏰 Dushman qal'asi";
+        chainLabel.textContent = state.chain;
+        diamondsLabel.textContent = state.diamonds;
+        playerHpText.textContent = Math.ceil(state.playerHp);
+        enemyHpText.textContent = Math.ceil(state.enemyHp);
+        playerHealth.style.width = clamp(state.playerHp / 10, 0, 100) + "%";
+        enemyHealth.style.width = clamp(state.enemyHp / 10, 0, 100) + "%";
+        for (const button of unitButtons) {
+          const side = button.dataset.side;
+          const allowed = side === "player" || state.mode === "local" || state.mode === "online";
+          const index = side === "player" ? 0 : 1;
+          const cost = button.dataset.unit === "tower" ? tower.cost : settings[button.dataset.unit].cost;
+          const wallet = side === "player" ? state.gold : state.enemyGold;
+          const canAfford = state.mode === "online" ? ownGold >= cost : wallet >= cost;
+          const towerLimitReached = button.dataset.unit === "tower" && state.towers[index] >= tower.limit;
+          button.disabled = !state.running || !allowed || !canAfford || towerLimitReached ||
+            (state.mode === "online" && side !== onlineSide());
+        }
+      }
+      function addFloat(text, x, y, color) {
+        state.particles.push({ text, x, y, color, life: .55 });
+      }
+      function damageCastle(side, damage) {
+        if (side === "player") state.playerHp = Math.max(0, state.playerHp - damage);
+        else state.enemyHp = Math.max(0, state.enemyHp - damage);
+      }
+      function update(dt) {
+        if (!state.running) return;
+        if (state.mode === "online") return;
+        state.elapsed += dt;
+        state.spawnTimer -= dt;
+        if (state.mode === "solo" && state.spawnTimer <= 0) {
+          const types = ["swordsman", "swordsman", "archer", "knight"];
+          makeUnit(types[Math.floor(Math.random() * types.length)], "enemy");
+          state.spawnTimer = Math.max(2.4, 5.6 - state.elapsed / 70);
+          state.wave = Math.floor(state.elapsed / 22) + 1;
+          roundLabel.textContent = `Dushman to‘lqini ${state.wave}`;
+        }
+        for (let sideIndex = 0; sideIndex < 2; sideIndex++) {
+          const defendedSide = sideIndex === 0 ? "player" : "enemy";
+          const enemySide = sideIndex === 0 ? "enemy" : "player";
+          const castlePosition = castleX(defendedSide);
+          state.towerCooldowns[sideIndex] = state.towerCooldowns[sideIndex].map(cooldown => cooldown - dt);
+          for (let index = 0; index < state.towers[sideIndex]; index++) {
+            if (state.towerCooldowns[sideIndex][index] > 0) continue;
+            const target = state.units
+              .filter(unit => unit.side === enemySide && Math.abs(unit.x - castlePosition) <= tower.range)
+              .sort((a, b) => Math.abs(a.x - castlePosition) - Math.abs(b.x - castlePosition))[0];
+            if (target) {
+              target.hp -= tower.damage;
+              state.towerCooldowns[sideIndex][index] = tower.interval;
+              addFloat(`-${tower.damage}`, target.x, floorY() - 36, "#ffe08b");
+            }
+          }
+        }
+        for (const unit of state.units) {
+          unit.cooldown -= dt;
+          let target = null;
+          let nearest = Infinity;
+          for (const other of state.units) {
+            if (other.side === unit.side || other.hp <= 0) continue;
+            const distance = Math.abs(other.x - unit.x);
+            if (distance < nearest && distance <= unit.stats.range) { nearest = distance; target = other; }
+          }
+          if (target && unit.cooldown <= 0) {
+            target.hp -= unit.stats.damage;
+            unit.cooldown = unit.stats.interval;
+            addFloat(`-${unit.stats.damage}`, target.x, floorY() - 32, "#fff1bb");
+          } else {
+            const castleTarget = unit.side === "player" ? castleX("enemy") - 67 : castleX("player") + 67;
+            const distance = Math.abs(castleTarget - unit.x);
+            if (!target && distance <= unit.stats.range) {
+              if (unit.cooldown <= 0) {
+                damageCastle(unit.side === "player" ? "enemy" : "player", unit.stats.damage);
+                unit.cooldown = unit.stats.interval;
+                addFloat(`-${unit.stats.damage}`, castleTarget, floorY() - 158, "#ffe0a1");
+              }
+            } else if (!target) {
+              unit.x += (unit.side === "player" ? 1 : -1) * unit.stats.speed * dt;
+            }
+          }
+        }
+        state.units = state.units.filter(unit => unit.hp > 0);
+        state.particles = state.particles.filter(particle => {
+          particle.life -= dt;
+          particle.y -= 20 * dt;
+          return particle.life > 0;
+        });
+        if (state.enemyHp <= 0) finish("player");
+        if (state.playerHp <= 0) finish("enemy");
+        updateUI();
+      }
+      function finish(winner) {
+        if (!state.running) return;
+        state.running = false;
+        const winnerIsLeft = winner === "player";
+        const playerWon = state.mode === "online" ? winnerIsLeft === (onlineRoom?.player === 1) : winnerIsLeft;
+        const winnerName = state.mode === "local" || state.mode === "online"
+          ? `${winnerIsLeft ? "1-o‘yinchi" : "2-o‘yinchi"} g‘alaba qildi!`
+          : (playerWon ? "G‘ALABA!" : "MAG‘LUBIYAT");
+        if (state.mode !== "online") {
+          if (state.mode === "local") state[playerWon ? "gold" : "enemyGold"] += 10;
+          if (state.mode === "local" || playerWon) {
+            if (state.mode === "solo") state.gold += 10;
+            state.chain += 10;
+            state.diamonds += 10;
+          }
+        }
+        document.getElementById("result-title").textContent = winnerName;
+        document.getElementById("result-text").textContent =
+          `G‘olibga mukofot: +10 tanga, +10 zanjir va +10 olmos. Qayta o‘ynash yoki yuqoridagi “Bosh menyu”ni tanlash mumkin.`;
+        document.getElementById("restart").textContent = state.mode === "online" ? "Bosh menyuga qaytish" : "Qayta o‘ynash";
+        message.classList.remove("hidden");
+        updateUI();
+      }
+      function startGame(mode) {
+        stopOnlinePolling();
+        onlineRoom = null;
+        lastOnlineSnapshot = null;
+        roomChat.classList.remove("visible", "floating");
+        document.getElementById("online-panel").append(roomChat);
+        onlineStatus.style.display = "none";
+        state.gold = 100; state.playerHp = 1000; state.enemyHp = 1000;
+        state.enemyGold = 100;
+        state.chain = 0; state.diamonds = 0;
+        state.towers = [0, 0]; state.towerCooldowns = [[], []];
+        state.units = []; state.particles = []; state.elapsed = 0; state.spawnTimer = 4;
+        state.wave = 1; state.mode = mode; state.running = true;
+        roundLabel.textContent = mode === "local" ? "2 o‘yinchi jangi!" : "Jang boshlandi!";
+        mainMenu.classList.add("hidden");
+        soloControls.style.display = mode === "solo" ? "flex" : "none";
+        duelControls.style.display = mode === "local" ? "flex" : "none";
+        unitButtons.forEach(button => {
+          if (button.closest("#solo-controls")) button.dataset.side = "player";
+          button.hidden = button.closest("#solo-controls") && mode !== "solo";
+        });
+        document.getElementById("help").innerHTML = mode === "local"
+          ? "<strong>2 o‘yinchi:</strong> 1-o‘yinchi 1–4, 2-o‘yinchi 7–0 tugmalari yoki o‘z tugmalaridan foydalanadi.<br><strong>Minora:</strong> dushmanga avtomatik o‘q uzadi."
+          : "<strong>Vazifa:</strong> askar chiqarib dushman qal'asini yeng!<br><strong>Minora:</strong> 4 ni bosing yoki tugmani tanlang. G‘alaba mukofoti: 10 tanga, 10 zanjir, 10 olmos.";
+        onlinePanel.hidden = true;
+        message.classList.add("hidden");
+        updateUI();
+      }
+      function showMainMenu() {
+        state.running = false;
+        stopOnlinePolling();
+        onlineRoom = null;
+        chatToggle.hidden = true;
+        unreadChatCount = 0;
+        chatOpen = false;
+        roomChat.classList.remove("collapsed", "visible", "floating");
+        document.getElementById("online-panel").append(roomChat);
+        onlineStatus.style.display = "none";
+        message.classList.add("hidden");
+        mainMenu.classList.remove("hidden");
+        soloControls.style.display = "none";
+        duelControls.style.display = "none";
+        updateUI();
+      }
+      function onlineSide() {
+        return onlineRoom?.player === 2 ? "enemy" : "player";
+      }
+      async function requestApi(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "content-type": "application/json", ...(options.headers || {}) }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Server so‘rovni qabul qilmadi.");
+        return data;
+      }
+      function showOnlineError(error) {
+        const detail = location.protocol === "file:"
+          ? "O‘yin fayl sifatida ochilgan. Serverni node server.mjs bilan ishga tushirib, shu qurilmada http://localhost:3000 manzilini oching. Boshqa qurilmaga umumiy server manzili kerak."
+          : error instanceof TypeError
+            ? "Serverga ulanib bo‘lmadi. Serverni ishga tushiring va ikkala qurilmada ham uning bir xil manzilini oching."
+            : error.message;
+        roomStatus.textContent = detail;
+      }
+      function stopOnlinePolling() {
+        if (onlinePollTimer) clearTimeout(onlinePollTimer);
+        onlinePollTimer = 0;
+        polling = false;
+      }
+      function enterOnlineGame() {
+        if (state.mode === "online" && state.running) return;
+        state.mode = "online";
+        state.running = true;
+        mainMenu.classList.add("hidden");
+        roomChat.classList.add("floating");
+        document.body.append(roomChat);
+        setChatOpen(false);
+        soloControls.style.display = "flex";
+        duelControls.style.display = "none";
+        unitButtons.forEach(button => {
+          if (!button.closest("#solo-controls")) return;
+          button.hidden = false;
+          button.dataset.side = onlineSide();
+          const shortcut = {
+            swordsman: ["1", "7"],
+            archer: ["2", "8"],
+            knight: ["3", "9"],
+            tower: ["4", "0"]
+          };
+          button.querySelector(".key").textContent = shortcut[button.dataset.unit][onlineRoom.player - 1];
+        });
+        document.getElementById("help").innerHTML = `<strong>Onlayn jang · xona ${onlineRoom.code}</strong><br>${onlineRoom.player}-o‘yinchi sifatida o‘ynayapsiz. Askar va minora tugmalaridan yoki ${onlineRoom.player === 1 ? "1–4" : "7–0"} raqamlaridan foydalaning.`;
+        onlineStatus.textContent = `${onlineRoom.name} · ${onlineRoom.code}`;
+        onlineStatus.style.display = "block";
+        roundLabel.textContent = "Onlayn jang!";
+        updateUI();
+      }
+      function applyOnlineSnapshot(data) {
+        if (!data?.game || !onlineRoom) return;
+        lastOnlineSnapshot = data;
+        const game = data.game;
+        state.gold = game.gold[0];
+        state.enemyGold = game.gold[1];
+        state.playerHp = game.hp[0];
+        state.enemyHp = game.hp[1];
+        state.chain = game.chain;
+        state.diamonds = game.diamonds;
+        state.towers = game.towers;
+        state.towerCooldowns = game.towerCooldowns;
+        state.elapsed = game.elapsed;
+        state.units = game.units.map(unit => ({
+          ...unit,
+          x: unit.x * width / 1000,
+          stats: settings[unit.type]
+        }));
+        renderChatMessages(data.messages || []);
+        if (data.started) enterOnlineGame();
+        updateUI();
+        if (game.winner) {
+          finish(game.winner);
+          stopOnlinePolling();
+        }
+      }
+      async function pollOnlineRoom() {
+        if (!onlineRoom || polling) return;
+        polling = true;
+        try {
+          const data = await requestApi(`/api/rooms/${onlineRoom.code}?after=${lastChatId}`, {
+            headers: { "x-player-token": onlineRoom.token }
+          });
+          renderChatMessages(data.messages || []);
+          if (data.started) {
+            applyOnlineSnapshot(data);
+          } else {
+            roomStatus.textContent = `Xona kodi: ${onlineRoom.code}. Ikkinchi o‘yinchi qo‘shilishini kutyapmiz…`;
+          }
+        } catch (error) {
+          if (onlineRoom) {
+            roomStatus.textContent = `Ulanish uzildi: ${error.message} Qayta ulanmoqda…`;
+            roundLabel.textContent = "Server bilan aloqa uzildi";
+          }
+        } finally {
+          polling = false;
+          if (onlineRoom && state.running && state.mode === "online") {
+            onlinePollTimer = setTimeout(pollOnlineRoom, 300);
+          } else if (onlineRoom && mainMenu.classList.contains("hidden") === false) {
+            onlinePollTimer = setTimeout(pollOnlineRoom, 700);
+          }
+        }
+      }
+      function beginOnlineRoom(data) {
+        onlineRoom = { code: data.code, token: data.token, player: data.player, name: data.name };
+        state.mode = "online";
+        state.running = false;
+        lastChatId = 0;
+        renderedChatMessages = 0;
+        unreadChatCount = 0;
+        chatMessages.replaceChildren();
+        chatError.textContent = "";
+        roomChat.classList.remove("floating", "collapsed");
+        document.getElementById("online-panel").append(roomChat);
+        roomChat.classList.add("visible");
+        chatToggle.hidden = false;
+        setChatOpen(true);
+        roomCodeDisplay.textContent = data.code;
+        roomCodeDisplay.hidden = false;
+        copyRoomButton.hidden = false;
+        document.querySelector(".online-actions").hidden = true;
+        document.getElementById("player-name").disabled = true;
+        roomStatus.textContent = data.state.started
+          ? "Raqib ulandi. Jang boshlandi!"
+          : "Ikkinchi qurilmada shu saytni ochib, kodni kiriting.";
+        onlineStatus.textContent = `${data.name} · ${data.code}`;
+        onlineStatus.style.display = "block";
+        if (data.state.started) applyOnlineSnapshot(data.state);
+        stopOnlinePolling();
+        pollOnlineRoom();
+      }
+      async function createOnlineRoom() {
+        if (onlineRequestPending || onlineRoom) return;
+        const button = document.getElementById("create-room");
+        const code = document.getElementById("create-code").value.trim();
+        if (!/^\d{6}$/.test(code)) {
+          roomStatus.textContent = "Yangi xona kodi o‘zingiz kiritadigan 6 ta raqamdan iborat bo‘lsin.";
+          return;
+        }
+        onlineRequestPending = true;
+        button.disabled = true;
+        roomStatus.textContent = "Xona yaratilmoqda…";
+        try {
+          const name = getPlayerName();
+          const data = await requestApi("/api/rooms", {
+            method: "POST",
+            body: JSON.stringify({ action: "create", name, code })
+          });
+          beginOnlineRoom(data);
+        } catch (error) {
+          if (error instanceof TypeError) showOnlineError(error);
+          else roomStatus.textContent = error.message;
+        } finally {
+          onlineRequestPending = false;
+          button.disabled = false;
+        }
+      }
+      async function joinOnlineRoom() {
+        if (onlineRequestPending || onlineRoom) return;
+        const codeInput = document.getElementById("join-code");
+        const code = codeInput.value.trim();
+        const button = document.getElementById("join-room");
+        if (!/^\d{6}$/.test(code)) {
+          roomStatus.textContent = "Xona kodi 6 ta raqamdan iborat bo‘lishi kerak.";
+          return;
+        }
+        onlineRequestPending = true;
+        button.disabled = true;
+        roomStatus.textContent = "Xonaga ulanmoqda…";
+        try {
+          const name = getPlayerName();
+          const data = await requestApi("/api/rooms", {
+            method: "POST",
+            body: JSON.stringify({ action: "join", code, name })
+          });
+          beginOnlineRoom(data);
+        } catch (error) {
+          if (error instanceof TypeError) showOnlineError(error);
+          else roomStatus.textContent = error.message;
+        } finally {
+          onlineRequestPending = false;
+          button.disabled = false;
+        }
+      }
+      async function sendOnlineAction(type) {
+        if (!onlineRoom) return;
+        try {
+          const data = await requestApi(`/api/rooms/${onlineRoom.code}/action`, {
+            method: "POST",
+            headers: { "x-player-token": onlineRoom.token },
+            body: JSON.stringify({ type })
+          });
+          applyOnlineSnapshot(data);
+        } catch (error) {
+          roundLabel.textContent = error.message;
+        }
+      }
+      function renderChatMessages(messages) {
+        for (const entry of messages) {
+          if (entry.id <= lastChatId) continue;
+          if (!chatOpen && entry.player !== onlineRoom?.player) unreadChatCount++;
+          const row = document.createElement("div");
+          row.className = "chat-message";
+          const sender = document.createElement("strong");
+          sender.textContent = `${entry.name || `O‘yinchi ${entry.player}`}: `;
+          const text = document.createElement("span");
+          text.textContent = entry.text;
+          row.append(sender, text);
+          chatMessages.append(row);
+          lastChatId = entry.id;
+          renderedChatMessages = Math.min(renderedChatMessages + 1, 100);
+          while (chatMessages.childElementCount > 100) chatMessages.firstElementChild.remove();
+        }
+        chatCount.textContent = `${renderedChatMessages}/100`;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        updateChatToggle();
+      }
+      function setChatOpen(open) {
+        chatOpen = open;
+        roomChat.classList.toggle("collapsed", !open);
+        if (open) {
+          unreadChatCount = 0;
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        updateChatToggle();
+      }
+      function updateChatToggle() {
+        chatToggle.textContent = chatOpen
+          ? "💬 Chatni yopish"
+          : `💬 Chat${unreadChatCount ? ` (${unreadChatCount})` : ""}`;
+        chatToggle.setAttribute("aria-expanded", String(chatOpen));
+      }
+      async function sendChatMessage(event) {
+        event.preventDefault();
+        if (!onlineRoom) return;
+        const input = document.getElementById("chat-input");
+        const text = input.value.trim();
+        if (!text) return;
+        const button = document.querySelector("#chat-form button");
+        button.disabled = true;
+        chatError.textContent = "";
+        try {
+          await requestApi(`/api/rooms/${onlineRoom.code}/chat`, {
+            method: "POST",
+            headers: { "x-player-token": onlineRoom.token },
+            body: JSON.stringify({ text })
+          });
+          input.value = "";
+          if (!polling) await pollOnlineRoom();
+        } catch (error) {
+          chatError.textContent = error.message;
+        } finally {
+          button.disabled = false;
+          input.focus();
+        }
+      }
+      function frame(time) {
+        const dt = Math.min((time - (state.last || time)) / 1000, .05);
+        state.last = time;
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+      unitButtons.forEach(button => button.addEventListener("click", () => hire(button.dataset.unit, button.dataset.side)));
+      window.addEventListener("keydown", event => {
+        if (event.repeat) return;
+        const keyboardUnits = {
+          "1": ["swordsman", "player"], "2": ["archer", "player"], "3": ["knight", "player"], "4": ["tower", "player"],
+          "7": ["swordsman", "enemy"], "8": ["archer", "enemy"], "9": ["knight", "enemy"], "0": ["tower", "enemy"]
+        };
+        if (keyboardUnits[event.key]) hire(...keyboardUnits[event.key]);
+      });
+      document.querySelectorAll(".menu-option[data-mode]").forEach(button =>
+        button.addEventListener("click", () => startGame(button.dataset.mode)));
+      document.getElementById("show-online").addEventListener("click", () => {
+        onlinePanel.hidden = false;
+        document.querySelector(".online-actions").hidden = false;
+        document.getElementById("player-name").disabled = false;
+        roomCodeDisplay.hidden = true;
+        copyRoomButton.hidden = true;
+        roomStatus.textContent = "O‘yin serverdan ochilishi kerak. Ikkinchi qurilmada localhost emas, serverning umumiy manzilini oching.";
+      });
+      document.getElementById("create-room").addEventListener("click", createOnlineRoom);
+      document.getElementById("join-room").addEventListener("click", joinOnlineRoom);
+      document.getElementById("join-code").addEventListener("input", event => {
+        event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
+      });
+      document.getElementById("create-code").addEventListener("input", event => {
+        event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
+      });
+      document.getElementById("copy-room").addEventListener("click", async () => {
+        if (!onlineRoom) return;
+        try {
+          await navigator.clipboard.writeText(`${location.origin} · xona ${onlineRoom.code}`);
+          roomStatus.textContent = "Xona kodi nusxalandi. Uni ikkinchi o‘yinchiga yuboring.";
+        } catch {
+          roomStatus.textContent = `Xona kodi: ${onlineRoom.code}. Uni ikkinchi o‘yinchiga yuboring.`;
+        }
+      });
+      document.getElementById("chat-form").addEventListener("submit", sendChatMessage);
+      chatToggle.addEventListener("click", () => setChatOpen(!chatOpen));
+      document.getElementById("home-button").addEventListener("click", showMainMenu);
+      document.getElementById("restart").addEventListener("click", () => {
+        if (state.mode === "online") showMainMenu();
+        else startGame(state.mode || "solo");
+      });
+      window.addEventListener("resize", resize);
+      resize();
+      updateUI();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
